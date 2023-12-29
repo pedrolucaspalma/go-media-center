@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -28,42 +27,7 @@ func PlayerHandler(res http.ResponseWriter, req *http.Request) {
 	template.Execute(res, nil)
 }
 
-func ExampleHandler(w http.ResponseWriter, r *http.Request) {
-	filePtr, err := os.Open(selectedFile)
-	if err != nil {
-		log.Fatal(w, "N leu o arquivo")
-	}
-
-	defer filePtr.Close()
-
-	fileInfo, _ := os.Stat(selectedFile)
-
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	w.Header().Set("Content-type", "video/mp4")
-	w.Header().Set("Accept-ranges", "bytes")
-	w.Header().Set("Content-length", fmt.Sprint(fileInfo.Size()))
-
-	buffer := make([]byte, 1024)
-
-	for {
-		n, err := filePtr.Read(buffer)
-		if err != nil && err.Error() != "EOF" {
-			http.Error(w, "Error reading file", http.StatusInternalServerError)
-			return
-		}
-
-		if n == 0 {
-			break
-		}
-
-		w.Write(buffer[:n])
-
-		w.(http.Flusher).Flush()
-	}
-}
-
 func HandleVideo(w http.ResponseWriter, r *http.Request) {
-	// Open the video file
 	file, err := os.Open(selectedFile)
 	if err != nil {
 		http.Error(w, "Error opening video file", http.StatusInternalServerError)
@@ -71,46 +35,34 @@ func HandleVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Get the file's information
 	fileInfo, err := file.Stat()
 	if err != nil {
 		http.Error(w, "Error getting video file information", http.StatusInternalServerError)
 		return
 	}
 
-	// Set headers for video streaming
-	// w.Header().Set("Content-Type", "video/mp4")
-	// w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
 
-	// Check for range request
 	rangeHeader := r.Header.Get("Range")
 	if rangeHeader != "" {
-		// Parse range header
 		byteRanges, err := parseRangeHeader(rangeHeader, fileInfo.Size())
 		if err != nil {
 			http.Error(w, "Invalid Range Header", http.StatusRequestedRangeNotSatisfiable)
 			return
 		}
 
-		// Handle the first range only (ignoring multiple ranges for simplicity)
 		firstRange := byteRanges[0]
 
 		fmt.Printf("%d \n", firstRange)
 
-		// Set headers for partial content
 		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", firstRange.start, firstRange.end, fileInfo.Size()))
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", firstRange.length))
 		w.WriteHeader(http.StatusPartialContent)
 
-		// Seek to the start position in the file
 		file.Seek(firstRange.start, 0)
 
-		// Copy the specified range to the response writer
 		http.ServeContent(w, r, "", fileInfo.ModTime(), file)
 	} else {
-		// Serve the entire video file
-		fmt.Print("Else")
 		http.ServeContent(w, r, "", fileInfo.ModTime(), file)
 	}
 }

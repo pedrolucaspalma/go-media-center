@@ -8,7 +8,6 @@ import (
 
 func main() {
 	http.HandleFunc("/", handlers.HomeHandler)
-	http.HandleFunc("/example", handlers.ExampleHandler)
 
 	http.HandleFunc("/selected", handlers.HandleVideo)
 	http.HandleFunc("/player", handlers.PlayerHandler)
