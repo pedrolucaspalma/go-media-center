@@ -22,3 +22,5 @@ go.work
 
 *.sqlite
 *.sqlite-journal
+
+node_modules
